@@ -8,20 +8,51 @@
     android:background="@color/black"
     tools:context=".MainActivity">
 
+    <!-- NEW: live camera, fills the space above your bottom panel.
+         First child so your logo and panel draw on top of it. -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:scaleType="fillCenter"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/view"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- FIXED: was "@android:black", which is not a valid reference -->
     <View
         android:id="@+id/view"
         android:layout_width="match_parent"
         android:layout_height="223dp"
+        android:background="@android:color/black"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- NEW: shows the phrase that was just spoken, at the top of your panel -->
+    <TextView
+        android:id="@+id/captionText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:gravity="center"
+        android:paddingHorizontal="16dp"
+        android:textColor="@android:color/white"
+        android:textSize="28sp"
+        android:textStyle="bold"
+        app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        android:background="@android:black"/>
+        app:layout_constraintTop_toTopOf="@id/view" />
 
     <ImageView
         android:id="@+id/imageView"
         android:layout_width="50dp"
         android:layout_height="50dp"
+        android:layout_marginStart="16dp"
+        android:layout_marginTop="16dp"
+        android:contentDescription="Logo"
         android:scaleType="centerInside"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
@@ -29,42 +60,41 @@
 
     <ImageButton
         android:id="@+id/imageButton"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:layout_marginBottom="24dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="Record"
+        android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@mipmap/recordcon1_round"
-        android:background="@android:color/transparent"/>
+        app:srcCompat="@drawable/recordcon" />
 
     <ImageButton
         android:id="@+id/imageButton2"
         android:layout_width="60dp"
         android:layout_height="60dp"
+        android:layout_marginBottom="34dp"
         android:background="@android:color/transparent"
+        android:contentDescription="Files"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
-
-        app:layout_constraintEnd_toStartOf="@+id/imageButton3"
-        app:layout_constraintStart_toEndOf="@+id/imageButton"
+        app:layout_constraintEnd_toStartOf="@+id/imageButton"
+        app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="@drawable/filecon" />
 
     <ImageButton
         android:id="@+id/imageButton3"
         android:layout_width="60dp"
         android:layout_height="60dp"
+        android:layout_marginBottom="34dp"
         android:background="@android:color/transparent"
+        android:contentDescription="Mute"
         android:scaleType="fitCenter"
-
-        app:srcCompat="@drawable/mute"
-        tools:layout_editor_absoluteX="327dp"
-        tools:layout_editor_absoluteY="671dp" />
-
-    <androidx.constraintlayout.Constraints android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
-    <androidx.constraintlayout.Constraints android:layout_width="wrap_content"
-        android:layout_height="wrap_content" />
-
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@+id/imageButton"
+        app:srcCompat="@drawable/mute" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
