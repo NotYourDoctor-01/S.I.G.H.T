@@ -267,7 +267,7 @@ def main():
     ap.add_argument("--clips", default="C:/Users/Louie/Documents/Stuff/STEAMCongress/clips", help="folder of phrase subfolders")
     ap.add_argument("--out", default="C:/Users/Louie/Documents/Stuff/STEAMCongress/exports", help="output folder")
     ap.add_argument("--cache", default="landmark_cache", help="landmark cache folder")
-    ap.add_argument("--epochs", type=int, default=100)
+    ap.add_argument("--epochs", type=int, default=150)
     ap.add_argument("--preview", action="store_true",
                     help="show detected landmarks on each clip, then exit (no training)")
     args = ap.parse_args()

@@ -5,6 +5,7 @@ Uses the model trained by train_sign_model.py.
 
 Setup:
     pip install pyttsx3        (plus the packages from training)
+    Optional: export/phrases.json to customize what is spoken per sign
     Linux only: sudo apt install espeak-ng
 
 Usage:
@@ -21,8 +22,6 @@ training or the two hand slots get swapped.
 import argparse
 import json
 import os
-import queue
-import threading
 import time
 from collections import Counter, deque
 
@@ -30,32 +29,9 @@ import cv2
 import numpy as np
 import mediapipe as mp
 
+from speech import SignSpeaker
 from train_sign_model import (NUM_FEATURES, NUM_FRAMES, draw_landmarks,
                               ensure_hand_model, frame_features, make_landmarker)
-
-
-class Speaker:
-    """Text-to-speech on a background thread so the video never freezes."""
-
-    def __init__(self):
-        self.q = queue.Queue()
-        threading.Thread(target=self._run, daemon=True).start()
-
-    def _run(self):
-        import pyttsx3
-        engine = pyttsx3.init()
-        while True:
-            text = self.q.get()
-            if text is None:
-                break
-            engine.say(text)
-            engine.runAndWait()
-
-    def say(self, text):
-        self.q.put(text)
-
-    def close(self):
-        self.q.put(None)
 
 
 def load_predictor(path):
@@ -80,7 +56,7 @@ def load_predictor(path):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--model", default="export/sign_model.keras")
+    ap.add_argument("--model", default="C:/Users/Louie/Documents/Stuff/STEAMCongress/exports/sign_model.keras")
     ap.add_argument("--camera", type=int, default=0)
     ap.add_argument("--flip", action="store_true", help="mirror the webcam image")
     ap.add_argument("--window", type=float, default=None,
@@ -90,6 +66,11 @@ def main():
                     help="min average confidence to accept a phrase")
     ap.add_argument("--votes", type=int, default=6,
                     help="how many of the last 8 predictions must agree")
+    ap.add_argument("--repeat-after", type=float, default=3.0,
+                    help="seconds after which a sign that is still being held/"
+                         "detected may be spoken again (0 = never)")
+    ap.add_argument("--release-time", type=float, default=0.6,
+                    help="seconds with no hands in view that re-arm the speaker")
     ap.add_argument("--no-speech", action="store_true", help="print only, no audio")
     args = ap.parse_args()
 
@@ -102,7 +83,8 @@ def main():
     print(f"Phrases: {labels}\nWindow: {window:.2f}s  (press q to quit)")
 
     predict = load_predictor(args.model)
-    speaker = None if args.no_speech else Speaker()
+    speaker = None if args.no_speech else SignSpeaker(
+        phrases_file=os.path.join(os.path.dirname(args.model), "phrases.json"))
     ensure_hand_model()
 
     cap = cv2.VideoCapture(args.camera)
@@ -112,6 +94,7 @@ def main():
     buffer = deque()                 # (time, features, hand_visible)
     votes = deque(maxlen=8)          # (label_index, confidence)
     last_spoken, last_hand_time = None, time.monotonic()
+    last_spoken_time, unsure = 0.0, 0
     shown_label, shown_conf, spoken_text = "-", 0.0, ""
     t0, last_ts, frame_no = time.monotonic(), -1, 0
 
@@ -139,7 +122,7 @@ def main():
             draw_landmarks(bgr, result)
 
             # Hands gone for a moment -> forget state so a phrase can be repeated
-            if time.monotonic() - last_hand_time > 1.0:
+            if time.monotonic() - last_hand_time > args.release_time:
                 votes.clear()
                 last_spoken = None
                 shown_label, shown_conf = "-", 0.0
@@ -160,18 +143,32 @@ def main():
                     top, n = Counter(v[0] for v in votes).most_common(1)[0]
                     avg = np.mean([v[1] for v in votes if v[0] == top])
                     if n >= args.votes and avg >= args.threshold:
+                        unsure = 0
                         name = labels[top]
+                        held_long = (args.repeat_after > 0 and
+                                     time.monotonic() - last_spoken_time
+                                     > args.repeat_after)
                         if name == "none":
                             last_spoken = None          # pause between signs
-                        elif name != last_spoken:
+                        elif name != last_spoken or held_long:
                             last_spoken = name
+                            last_spoken_time = time.monotonic()
                             spoken_text = name.replace("_", " ")
                             print(f"[{time.strftime('%H:%M:%S')}] {spoken_text} "
                                   f"({avg:.0%})")
                             if speaker:
-                                speaker.say(spoken_text)
+                                speaker.speak(name)
                             votes.clear()
+                    else:
+                        # Unclear predictions = the sign was released/changed.
+                        # Re-arm so the same phrase can be spoken again.
+                        unsure += 1
+                        if unsure >= 3:
+                            last_spoken = None
 
+            ready = "ready" if last_spoken is None else "waiting for release"
+            cv2.putText(bgr, ready, (10, 95), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
+                        (200, 200, 200), 1)
             cv2.putText(bgr, f"seeing: {shown_label} ({shown_conf:.0%})", (10, 30),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 0), 2)
             cv2.putText(bgr, f"said: {spoken_text}", (10, 65),
