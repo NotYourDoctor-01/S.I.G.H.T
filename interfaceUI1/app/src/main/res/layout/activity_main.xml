@@ -10,17 +10,20 @@
 
     <!-- NEW: live camera, fills the space above your bottom panel.
          First child so your logo and panel draw on top of it. -->
+
+    <!-- FIXED: was "@android:black", which is not a valid reference -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        app:scaleType="fillCenter"
-        app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toTopOf="@id/view"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.0"
+        app:scaleType="fillCenter" />
 
-    <!-- FIXED: was "@android:black", which is not a valid reference -->
     <View
         android:id="@+id/view"
         android:layout_width="match_parent"
