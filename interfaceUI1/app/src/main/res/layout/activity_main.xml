@@ -62,7 +62,7 @@
         app:srcCompat="@drawable/logocon" />
 
     <ImageButton
-        android:id="@+id/imageButton"
+        android:id="@+id/playButton"
         android:layout_width="80dp"
         android:layout_height="80dp"
         android:layout_marginBottom="24dp"
@@ -70,12 +70,12 @@
         android:contentDescription="Record"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/folderButton"
+        app:layout_constraintStart_toEndOf="@id/txtButton"
         app:srcCompat="@drawable/recordcon" />
 
     <ImageButton
-        android:id="@+id/imageButton2"
+        android:id="@+id/folderButton"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_marginBottom="34dp"
@@ -83,12 +83,12 @@
         android:contentDescription="Files"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@+id/imageButton"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/muteButton"
+        app:layout_constraintStart_toEndOf="@id/playButton"
         app:srcCompat="@drawable/filecon" />
 
     <ImageButton
-        android:id="@+id/imageButton3"
+        android:id="@+id/muteButton"
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_marginBottom="34dp"
@@ -97,7 +97,35 @@
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@+id/imageButton"
+        app:layout_constraintStart_toEndOf="@id/folderButton"
         app:srcCompat="@drawable/mute" />
+
+    <ImageButton
+        android:id="@+id/flipButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="34dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="Flip camera"
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/txtButton"
+        app:layout_constraintHorizontal_chainStyle="spread"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/flipcon" />
+
+    <ImageButton
+        android:id="@+id/txtButton"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginBottom="34dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="Text"
+        android:scaleType="fitCenter"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/playButton"
+        app:layout_constraintStart_toEndOf="@id/flipButton"
+        app:srcCompat="@drawable/txtcon" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>

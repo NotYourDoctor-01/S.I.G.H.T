@@ -26,7 +26,7 @@ class  MainActivity : AppCompatActivity() {
         }
 
         val caption = findViewById<TextView>(R.id.captionText)
-        val muteButton = findViewById<ImageButton>(R.id.imageButton3)
+        val muteButton = findViewById<ImageButton>(R.id.muteButton)
         val previewView = findViewById<PreviewView>(R.id.previewView)
 
         // Camera + sign recognition + speech
