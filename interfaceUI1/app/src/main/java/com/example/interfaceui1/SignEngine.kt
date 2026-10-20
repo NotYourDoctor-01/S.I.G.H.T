@@ -17,6 +17,7 @@ import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.mediapipe.framework.image.BitmapImageBuilder
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
@@ -30,6 +31,8 @@ import java.util.ArrayDeque
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
+import kotlin.math.sqrt
 
 class SignEngine(
     private val activity: AppCompatActivity,
@@ -37,6 +40,17 @@ class SignEngine(
     private val onSpoken: (String) -> Unit,
     private val onError: (String) -> Unit
 ) : TextToSpeech.OnInitListener {
+
+    private data class FrameEntry(
+        val timestamp: Float,
+        val features: FloatArray,
+        val hasHands: Boolean
+    )
+
+    private data class PredictionVote(
+        val labelIdx: Int,
+        val confidence: Float
+    )
 
     private var muted = false
     private var tts: TextToSpeech? = null
@@ -48,19 +62,25 @@ class SignEngine(
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var cameraProvider: ProcessCameraProvider? = null
 
-    private val frameBuffer = ArrayDeque<FloatArray>()
+    private var clipSeconds = 4.07f
     private var numFrames = 30
     private var numFeatures = 132
     private var labels = listOf<String>()
 
+    private val timeBuffer = ArrayDeque<FrameEntry>()
+    private val votes = ArrayDeque<PredictionVote>()
+    private var frameCount = 0
+
     private var lastSpokenPhrase: String? = null
     private var lastSpokenTime: Long = 0L
-    private val cooldownMs = 2000L
+    private val cooldownMs = 3000L
 
     companion object {
         private const val TAG = "SignEngine"
         private const val CAMERA_PERMISSION_REQUEST_CODE = 1001
-        private const val CONFIDENCE_THRESHOLD = 0.4f
+        private const val CONFIDENCE_THRESHOLD = 0.70f
+        private const val VOTE_WINDOW = 8
+        private const val REQUIRED_VOTES = 5
     }
 
     init {
@@ -90,12 +110,13 @@ class SignEngine(
         try {
             val assetManager = activity.assets
 
-            // Load model_info.json if available
+            // Load model_info.json
             try {
                 val jsonString = assetManager.open("model_info.json").bufferedReader().use { it.readText() }
                 val jsonObject = JSONObject(jsonString)
                 if (jsonObject.has("num_frames")) numFrames = jsonObject.getInt("num_frames")
                 if (jsonObject.has("num_features")) numFeatures = jsonObject.getInt("num_features")
+                if (jsonObject.has("clip_seconds")) clipSeconds = jsonObject.getDouble("clip_seconds").toFloat()
             } catch (e: Exception) {
                 Log.w(TAG, "Could not load model_info.json, using defaults", e)
             }
@@ -232,7 +253,11 @@ class SignEngine(
         try {
             val bitmap = imageProxy.toBitmap()
             val rotation = imageProxy.imageInfo.rotationDegrees
-            val matrix = Matrix().apply { postRotate(rotation.toFloat()) }
+
+            val matrix = Matrix()
+            matrix.postRotate(rotation.toFloat())
+            matrix.postScale(-1f, 1f) // Mirror horizontally like Python --flip
+
             val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
             val mpImage = BitmapImageBuilder(rotatedBitmap).build()
@@ -246,129 +271,157 @@ class SignEngine(
         }
     }
 
+    private fun computeHandFeatures(landmarks: List<NormalizedLandmark>): FloatArray {
+        if (landmarks.isEmpty()) return FloatArray(66)
+
+        val wristX = landmarks[0].x()
+        val wristY = landmarks[0].y()
+        val wristZ = landmarks[0].z()
+
+        // Landmark 9 is middle finger MCP joint (middle finger base)
+        val rel9X = landmarks[9].x() - wristX
+        val rel9Y = landmarks[9].y() - wristY
+        val rel9Z = landmarks[9].z() - wristZ
+
+        val norm = sqrt(rel9X * rel9X + rel9Y * rel9Y + rel9Z * rel9Z) + 1e-6f
+
+        val features = FloatArray(66)
+        for (i in 0 until minOf(21, landmarks.size)) {
+            val lm = landmarks[i]
+            features[i * 3] = (lm.x() - wristX) / norm
+            features[i * 3 + 1] = (lm.y() - wristY) / norm
+            features[i * 3 + 2] = (lm.z() - wristZ) / norm
+        }
+
+        // Wrist absolute coordinates
+        features[63] = wristX
+        features[64] = wristY
+        features[65] = wristZ
+
+        return features
+    }
+
     private fun processHandLandmarks(result: HandLandmarkerResult) {
         val features = FloatArray(numFeatures) // 132 floats
 
         val landmarksList = result.landmarks()
         val handednessList = result.handedness()
 
-        var leftHandIndex = -1
-        var rightHandIndex = -1
+        for (i in landmarksList.indices) {
+            val landmarks = landmarksList[i]
+            val categories = if (i < handednessList.size) handednessList[i] else emptyList()
+            val categoryName = if (categories.isNotEmpty()) categories[0].categoryName() else ""
 
-        for (i in handednessList.indices) {
-            val categories = handednessList[i]
-            if (categories.isNotEmpty()) {
-                val categoryName = categories[0].categoryName()
-                if (categoryName.equals("Left", ignoreCase = true) && leftHandIndex == -1) {
-                    leftHandIndex = i
-                } else if (categoryName.equals("Right", ignoreCase = true) && rightHandIndex == -1) {
-                    rightHandIndex = i
-                }
-            }
+            val slot = if (categoryName.equals("Left", ignoreCase = true)) 0 else 1
+            val handFeats = computeHandFeatures(landmarks)
+            val offset = slot * 66
+
+            System.arraycopy(handFeats, 0, features, offset, 66)
         }
 
-        // If handedness isn't specified explicitly, assign detected hands in order
-        if (leftHandIndex == -1 && rightHandIndex == -1) {
-            if (landmarksList.size > 0) leftHandIndex = 0
-            if (landmarksList.size > 1) rightHandIndex = 1
-        } else if (leftHandIndex == -1 && landmarksList.size > 1 && rightHandIndex != 0) {
-            leftHandIndex = 0
-        } else if (rightHandIndex == -1 && landmarksList.size > 1 && leftHandIndex != 1) {
-            rightHandIndex = 1
-        }
+        val now = SystemClock.uptimeMillis() / 1000.0f
+        val hasHands = landmarksList.isNotEmpty()
 
-        // Fill Left Hand Slot (indices 0..65)
-        if (leftHandIndex != -1 && leftHandIndex < landmarksList.size) {
-            val landmarks = landmarksList[leftHandIndex]
-            val score = if (leftHandIndex < handednessList.size && handednessList[leftHandIndex].isNotEmpty()) {
-                handednessList[leftHandIndex][0].score()
-            } else 1.0f
-
-            for (j in 0 until minOf(21, landmarks.size)) {
-                val lm = landmarks[j]
-                features[j * 3] = lm.x()
-                features[j * 3 + 1] = lm.y()
-                features[j * 3 + 2] = lm.z()
-            }
-            features[63] = 1.0f  // is_present
-            features[64] = score // confidence score
-            features[65] = 0.0f  // handedness (0.0 = Left)
-        }
-
-        // Fill Right Hand Slot (indices 66..131)
-        if (rightHandIndex != -1 && rightHandIndex < landmarksList.size) {
-            val landmarks = landmarksList[rightHandIndex]
-            val score = if (rightHandIndex < handednessList.size && handednessList[rightHandIndex].isNotEmpty()) {
-                handednessList[rightHandIndex][0].score()
-            } else 1.0f
-
-            val offset = 66
-            for (j in 0 until minOf(21, landmarks.size)) {
-                val lm = landmarks[j]
-                features[offset + j * 3] = lm.x()
-                features[offset + j * 3 + 1] = lm.y()
-                features[offset + j * 3 + 2] = lm.z()
-            }
-            features[offset + 63] = 1.0f  // is_present
-            features[offset + 64] = score // confidence score
-            features[offset + 65] = 1.0f  // handedness (1.0 = Right)
-        }
-
-        // Add to frame buffer
-        synchronized(frameBuffer) {
-            frameBuffer.addLast(features)
-            while (frameBuffer.size > numFrames) {
-                frameBuffer.removeFirst()
+        synchronized(timeBuffer) {
+            timeBuffer.addLast(FrameEntry(now, features, hasHands))
+            while (timeBuffer.isNotEmpty() && (now - timeBuffer.first.timestamp > clipSeconds)) {
+                timeBuffer.removeFirst()
             }
 
-            if (frameBuffer.size == numFrames) {
-                runInference()
+            val span = if (timeBuffer.size > 1) timeBuffer.last.timestamp - timeBuffer.first.timestamp else 0f
+            val handCount = timeBuffer.count { it.hasHands }
+            val handFrac = if (timeBuffer.isNotEmpty()) handCount.toFloat() / timeBuffer.size else 0f
+
+            frameCount++
+            if (frameCount % 3 == 0 && span >= 0.8f * clipSeconds && handFrac >= 0.3f) {
+                runInferenceFromBuffer()
             }
         }
     }
 
-    private fun runInference() {
+    private fun runInferenceFromBuffer() {
         val interpreter = tfliteInterpreter ?: return
         if (labels.isEmpty()) return
 
-        // Prepare input: [1, 30, 132]
-        val input = Array(1) { Array(numFrames) { FloatArray(numFeatures) } }
-        synchronized(frameBuffer) {
-            var idx = 0
-            for (frame in frameBuffer) {
-                input[0][idx] = frame
-                idx++
-            }
+        val snapshot: List<FrameEntry>
+        synchronized(timeBuffer) {
+            if (timeBuffer.isEmpty()) return
+            snapshot = ArrayList(timeBuffer)
+        }
+
+        if (snapshot.size < 5) return
+
+        // Sample 30 frames evenly across the time window (matching Python np.linspace)
+        val sampledSequence = Array(1) { Array(numFrames) { FloatArray(numFeatures) } }
+        val maxIdx = snapshot.size - 1
+
+        for (i in 0 until numFrames) {
+            val idx = (i * maxIdx.toFloat() / (numFrames - 1)).roundToInt().coerceIn(0, maxIdx)
+            sampledSequence[0][i] = snapshot[idx].features
         }
 
         val numClasses = labels.size
         val output = Array(1) { FloatArray(numClasses) }
 
         try {
-            interpreter.run(input, output)
+            interpreter.run(sampledSequence, output)
 
             val predictions = output[0]
-            var maxIdx = -1
-            var maxScore = -1.0f
+            var bestIdx = -1
+            var bestScore = -1.0f
 
             for (i in predictions.indices) {
-                if (predictions[i] > maxScore) {
-                    maxScore = predictions[i]
-                    maxIdx = i
+                if (predictions[i] > bestScore) {
+                    bestScore = predictions[i]
+                    bestIdx = i
                 }
             }
 
-            if (maxIdx in labels.indices && maxScore >= CONFIDENCE_THRESHOLD) {
-                val recognizedPhrase = labels[maxIdx]
-                val currentTime = System.currentTimeMillis()
+            if (bestIdx in labels.indices) {
+                votes.addLast(PredictionVote(bestIdx, bestScore))
+                while (votes.size > VOTE_WINDOW) {
+                    votes.removeFirst()
+                }
 
-                if (recognizedPhrase != lastSpokenPhrase || (currentTime - lastSpokenTime) > cooldownMs) {
-                    lastSpokenPhrase = recognizedPhrase
-                    lastSpokenTime = currentTime
+                if (votes.size == VOTE_WINDOW) {
+                    val counts = HashMap<Int, Int>()
+                    for (vote in votes) {
+                        counts[vote.labelIdx] = (counts[vote.labelIdx] ?: 0) + 1
+                    }
 
-                    activity.runOnUiThread {
-                        onSpoken(recognizedPhrase)
-                        speakText(recognizedPhrase)
+                    var topLabelIdx = -1
+                    var topCount = 0
+                    for ((lbl, cnt) in counts) {
+                        if (cnt > topCount) {
+                            topCount = cnt
+                            topLabelIdx = lbl
+                        }
+                    }
+
+                    var sumConf = 0.0f
+                    for (vote in votes) {
+                        if (vote.labelIdx == topLabelIdx) sumConf += vote.confidence
+                    }
+                    val avgConf = sumConf / topCount
+
+                    if (topCount >= REQUIRED_VOTES && avgConf >= CONFIDENCE_THRESHOLD) {
+                        val name = labels[topLabelIdx]
+                        val currentTime = System.currentTimeMillis()
+                        val heldLong = cooldownMs > 0 && (currentTime - lastSpokenTime) > cooldownMs
+
+                        if (name.equals("none", ignoreCase = true)) {
+                            lastSpokenPhrase = null
+                        } else if (name != lastSpokenPhrase || heldLong) {
+                            lastSpokenPhrase = name
+                            lastSpokenTime = currentTime
+                            val phrase = name.replace("_", " ")
+
+                            activity.runOnUiThread {
+                                onSpoken(phrase)
+                                speakText(phrase)
+                            }
+                            votes.clear()
+                        }
                     }
                 }
             }
