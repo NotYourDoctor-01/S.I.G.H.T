@@ -27,6 +27,7 @@ class  MainActivity : AppCompatActivity() {
 
         val caption = findViewById<TextView>(R.id.captionText)
         val muteButton = findViewById<ImageButton>(R.id.muteButton)
+        val flipButton = findViewById<ImageButton>(R.id.flipButton)
         val previewView = findViewById<PreviewView>(R.id.previewView)
 
         // Camera + sign recognition + speech
@@ -46,6 +47,11 @@ class  MainActivity : AppCompatActivity() {
             muted = !muted
             signEngine.setMuted(muted)
             muteButton.alpha = if (muted) 0.4f else 1f
+        }
+
+        // Flip camera button
+        flipButton?.setOnClickListener {
+            signEngine.toggleCamera()
         }
     }
 

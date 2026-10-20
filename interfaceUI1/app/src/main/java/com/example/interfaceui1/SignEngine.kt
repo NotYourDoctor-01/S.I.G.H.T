@@ -7,6 +7,8 @@ import android.graphics.Matrix
 import android.os.SystemClock
 import android.speech.tts.TextToSpeech
 import android.util.Log
+import android.view.OrientationEventListener
+import android.view.Surface
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -61,6 +63,9 @@ class SignEngine(
 
     private var cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
     private var cameraProvider: ProcessCameraProvider? = null
+    private var orientationEventListener: OrientationEventListener? = null
+    private var previewUseCase: Preview? = null
+    private var imageAnalysisUseCase: ImageAnalysis? = null
 
     private var clipSeconds = 4.07f
     private var numFrames = 30
@@ -75,18 +80,27 @@ class SignEngine(
     private var lastSpokenTime: Long = 0L
     private val cooldownMs = 3000L
 
+    private var isFrontCamera = true
+
+    var mirrorImage: Boolean = false
+
     companion object {
         private const val TAG = "SignEngine"
         private const val CAMERA_PERMISSION_REQUEST_CODE = 1001
-        private const val CONFIDENCE_THRESHOLD = 0.70f
+        private const val CONFIDENCE_THRESHOLD = 0.50f
         private const val VOTE_WINDOW = 8
-        private const val REQUIRED_VOTES = 5
+        private const val REQUIRED_VOTES = 3
     }
 
     init {
         initTts()
         loadModelAndLabels()
         setupHandLandmarker()
+    }
+
+    fun toggleCamera() {
+        isFrontCamera = !isFrontCamera
+        startCamera()
     }
 
     private fun initTts() {
@@ -210,11 +224,17 @@ class SignEngine(
                 val provider = cameraProviderFuture.get()
                 cameraProvider = provider
 
-                val preview = Preview.Builder().build().also {
-                    it.surfaceProvider = previewView.surfaceProvider
-                }
+                val rotation = previewView.display?.rotation ?: Surface.ROTATION_0
+
+                val preview = Preview.Builder()
+                    .setTargetRotation(rotation)
+                    .build().also {
+                        it.surfaceProvider = previewView.surfaceProvider
+                    }
+                previewUseCase = preview
 
                 val imageAnalysis = ImageAnalysis.Builder()
+                    .setTargetRotation(rotation)
                     .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                     .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
                     .build()
@@ -222,10 +242,21 @@ class SignEngine(
                 imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
                     processFrame(imageProxy)
                 }
+                imageAnalysisUseCase = imageAnalysis
 
+                setupOrientationListener()
+
+                val targetSelector = if (isFrontCamera) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
                 val cameraSelector = when {
-                    provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> CameraSelector.DEFAULT_FRONT_CAMERA
-                    provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> CameraSelector.DEFAULT_BACK_CAMERA
+                    provider.hasCamera(targetSelector) -> targetSelector
+                    provider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) -> {
+                        isFrontCamera = true
+                        CameraSelector.DEFAULT_FRONT_CAMERA
+                    }
+                    provider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) -> {
+                        isFrontCamera = false
+                        CameraSelector.DEFAULT_BACK_CAMERA
+                    }
                     else -> throw IllegalStateException("No available camera found on this device")
                 }
 
@@ -243,6 +274,29 @@ class SignEngine(
         }, ContextCompat.getMainExecutor(activity))
     }
 
+    private fun setupOrientationListener() {
+        orientationEventListener?.disable()
+        orientationEventListener = object : OrientationEventListener(activity) {
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) return
+
+                val rotation = when (orientation) {
+                    in 45..134 -> Surface.ROTATION_270
+                    in 135..224 -> Surface.ROTATION_180
+                    in 225..314 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+
+                previewUseCase?.targetRotation = rotation
+                imageAnalysisUseCase?.targetRotation = rotation
+            }
+        }.also {
+            if (it.canDetectOrientation()) {
+                it.enable()
+            }
+        }
+    }
+
     private fun processFrame(imageProxy: ImageProxy) {
         val landmarker = handLandmarker
         if (landmarker == null) {
@@ -255,8 +309,10 @@ class SignEngine(
             val rotation = imageProxy.imageInfo.rotationDegrees
 
             val matrix = Matrix()
-            matrix.postRotate(rotation.toFloat())
-            matrix.postScale(-1f, 1f) // Mirror horizontally like Python --flip
+            matrix.postRotate(rotation.toFloat()) // First rotate frame upright into portrait space
+            if (mirrorImage) {
+                matrix.postScale(-1f, 1f) // Then mirror horizontally in upright space (exact 1:1 match with Python cv2.flip(bgr, 1))
+            }
 
             val rotatedBitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
 
@@ -445,6 +501,9 @@ class SignEngine(
 
     fun release() {
         try {
+            orientationEventListener?.disable()
+            orientationEventListener = null
+
             cameraProvider?.unbindAll()
             cameraExecutor.shutdown()
 
