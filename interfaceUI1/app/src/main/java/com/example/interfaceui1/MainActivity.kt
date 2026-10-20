@@ -1,5 +1,6 @@
 package com.example.interfaceui1
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
 import android.widget.TextView
@@ -9,6 +10,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.view.PreviewView
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import java.io.File
 
 class  MainActivity : AppCompatActivity() {
 
@@ -25,10 +27,25 @@ class  MainActivity : AppCompatActivity() {
             insets
         }
 
+        // Create the folder if it doesn't exist
+        val folder = File(filesDir, "MyFiles")
+        if (!folder.exists()) {
+            folder.mkdirs()
+        }
+
+
+
         val caption = findViewById<TextView>(R.id.captionText)
         val muteButton = findViewById<ImageButton>(R.id.muteButton)
         val flipButton = findViewById<ImageButton>(R.id.flipButton)
         val previewView = findViewById<PreviewView>(R.id.previewView)
+        val fileButton = findViewById<ImageButton>(R.id.folderButton)
+
+
+        //folder button
+        fileButton.setOnClickListener {
+            startActivity(Intent(this, FileInterfaceActivity::class.java))
+        }
 
         // Camera + sign recognition + speech
         signEngine = SignEngine(
