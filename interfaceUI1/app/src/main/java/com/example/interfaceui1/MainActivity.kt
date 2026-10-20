@@ -70,6 +70,11 @@ class  MainActivity : AppCompatActivity() {
         flipButton?.setOnClickListener {
             signEngine.toggleCamera()
         }
+
+        // Text button: opens the Text to FSL screen (it has its own Back button)
+        findViewById<ImageButton>(R.id.txtButton).setOnClickListener {
+            startActivity(Intent(this, TextToFslActivity::class.java))
+        }
     }
 
     override fun onRequestPermissionsResult(
