@@ -1,5 +1,6 @@
 package com.example.interfaceui1
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.ImageButton
 import android.widget.TextView
@@ -52,6 +53,11 @@ class  MainActivity : AppCompatActivity() {
         // Flip camera button
         flipButton?.setOnClickListener {
             signEngine.toggleCamera()
+        }
+
+        // Text button: opens the Text to FSL screen (it has its own Back button)
+        findViewById<ImageButton>(R.id.txtButton).setOnClickListener {
+            startActivity(Intent(this, TextToFslActivity::class.java))
         }
     }
 

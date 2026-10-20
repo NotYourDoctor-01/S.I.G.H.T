@@ -31,6 +31,12 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Opened by txtButton: Text to FSL screen with a Back button -->
+        <activity
+            android:name=".TextToFslActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
     </application>
 
 </manifest>
