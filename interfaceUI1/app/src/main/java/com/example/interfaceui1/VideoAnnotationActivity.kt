@@ -177,18 +177,30 @@ class VideoAnnotationActivity : AppCompatActivity() {
                 val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                 val durationMs = durationStr?.toLongOrNull() ?: 0L
 
+                val rotationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                val videoRotation = rotationStr?.toIntOrNull() ?: 0
+
                 if (durationMs > 0) {
                     val frameIntervalMs = 100L // Process 10 fps
                     val totalSteps = (durationMs / frameIntervalMs).toInt().coerceAtLeast(1)
 
                     val timeBuffer = ArrayDeque<FrameEntry>()
+                    val videoDurationSec = durationMs / 1000f
+                    val requiredSpan = (0.7f * videoDurationSec).coerceAtMost(0.8f * clipSeconds).coerceAtLeast(0.5f)
 
                     for (step in 0..totalSteps) {
                         val currentTimeMs = step * frameIntervalMs
                         val frameUs = currentTimeMs * 1000L
 
-                        val bitmap = retriever.getFrameAtTime(frameUs, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
-                        if (bitmap != null) {
+                        val rawBitmap = retriever.getFrameAtTime(frameUs, MediaMetadataRetriever.OPTION_CLOSEST)
+                        if (rawBitmap != null) {
+                            val bitmap = if (videoRotation != 0) {
+                                val matrix = android.graphics.Matrix().apply { postRotate(videoRotation.toFloat()) }
+                                android.graphics.Bitmap.createBitmap(rawBitmap, 0, 0, rawBitmap.width, rawBitmap.height, matrix, true)
+                            } else {
+                                rawBitmap
+                            }
+
                             val features = processBitmap(bitmap)
                             val hasHands = features.any { it != 0f }
                             val timestampSec = currentTimeMs / 1000f
@@ -202,12 +214,12 @@ class VideoAnnotationActivity : AppCompatActivity() {
                             val handCount = timeBuffer.count { it.hasHands }
                             val handFrac = if (timeBuffer.isNotEmpty()) handCount.toFloat() / timeBuffer.size else 0f
 
-                            if (span >= 0.8f * clipSeconds && handFrac >= 0.3f) {
+                            if ((span >= requiredSpan || step == totalSteps) && handFrac >= 0.2f) {
                                 val label = predictFromBuffer(timeBuffer)
                                 if (label != null && !label.equals("none", ignoreCase = true)) {
                                     val phrase = label.replace("_", " ")
                                     val startMs = (currentTimeMs - (clipSeconds * 1000).toLong()).coerceAtLeast(0L)
-                                    val endMs = currentTimeMs + 1000L
+                                    val endMs = currentTimeMs + 1200L
 
                                     val prev = subtitleSegments.lastOrNull()
                                     if (prev != null && prev.text == phrase && (startMs - prev.endTimeMs) < 1500L) {
@@ -333,7 +345,7 @@ class VideoAnnotationActivity : AppCompatActivity() {
                 }
             }
 
-            if (bestIdx in labels.indices && bestScore >= 0.60f) {
+            if (bestIdx in labels.indices && bestScore >= 0.35f) {
                 labels[bestIdx]
             } else null
         } catch (e: Exception) {

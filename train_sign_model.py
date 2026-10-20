@@ -187,21 +187,41 @@ def augment(X):
     return np.roll(X, np.random.randint(-3, 4), axis=1)
 
 
-def build_model(num_classes):
+def mirror_sequences(X):
+    """Left/right mirrored copy of sequences [N, T, 132].
+
+    Equivalent to the same sign performed with the other hand (or filmed
+    mirrored): swap the two hand slots, negate the wrist-relative x offsets and
+    flip the absolute wrist x (x -> 1 - x). Missing hands stay all zeros.
+    """
+    out = X.copy()
+    for h in range(NUM_HANDS):
+        blk = out[:, :, h * FEATS_PER_HAND:(h + 1) * FEATS_PER_HAND]   # view
+        present = np.abs(blk).sum(axis=2) > 0
+        blk[:, :, 0:63:3] *= -1
+        blk[:, :, 63] = np.where(present, 1.0 - blk[:, :, 63], 0.0)
+    left = out[:, :, :FEATS_PER_HAND].copy()
+    out[:, :, :FEATS_PER_HAND] = out[:, :, FEATS_PER_HAND:]
+    out[:, :, FEATS_PER_HAND:] = left
+    return out
+
+
+def build_model(num_classes, units=64):
     import tensorflow as tf
     return tf.keras.Sequential([
         tf.keras.layers.Input(shape=(NUM_FRAMES, NUM_FEATURES)),
         tf.keras.layers.Masking(mask_value=0.0),
-        tf.keras.layers.LSTM(64, return_sequences=True),
+        tf.keras.layers.LSTM(units, return_sequences=True),
         tf.keras.layers.Dropout(0.3),
-        tf.keras.layers.LSTM(64),
-        tf.keras.layers.Dense(64, activation="relu"),
+        tf.keras.layers.LSTM(units),
+        tf.keras.layers.Dense(units, activation="relu"),
         tf.keras.layers.Dropout(0.3),
         tf.keras.layers.Dense(num_classes, activation="softmax"),
     ])
 
 
-def train_and_export(X, y, labels, durations, out_dir, epochs):
+def train_and_export(X, y, labels, durations, out_dir, epochs, units=64, patience=15,
+                     mirror_aug=False):
     import tensorflow as tf
     from sklearn.model_selection import train_test_split
     from sklearn.metrics import classification_report
@@ -212,16 +232,19 @@ def train_and_export(X, y, labels, durations, out_dir, epochs):
     X_val, X_te, y_val, y_te = train_test_split(
         X_tmp, y_tmp, test_size=0.5, stratify=y_tmp, random_state=42)
 
+    if mirror_aug:        # also learn the mirrored / other-handed version of each sign
+        X_tr = np.concatenate([X_tr, mirror_sequences(X_tr)])
+        y_tr = np.concatenate([y_tr, y_tr])
     X_tr = np.concatenate([X_tr] + [augment(X_tr) for _ in range(4)])
     y_tr = np.concatenate([y_tr] * 5)
 
-    model = build_model(len(labels))
+    model = build_model(len(labels), units)
     model.compile(optimizer=tf.keras.optimizers.Adam(1e-3),
                   loss="sparse_categorical_crossentropy", metrics=["accuracy"])
     model.fit(
         X_tr, y_tr, validation_data=(X_val, y_val), epochs=epochs, batch_size=32,
         callbacks=[tf.keras.callbacks.EarlyStopping(
-            patience=15, restore_best_weights=True)],
+            patience=patience, restore_best_weights=True)],
     )
 
     print("\nTest set results:")
@@ -267,7 +290,13 @@ def main():
     ap.add_argument("--clips", default="C:/Users/Louie/Documents/Stuff/STEAMCongress/clips", help="folder of phrase subfolders")
     ap.add_argument("--out", default="C:/Users/Louie/Documents/Stuff/STEAMCongress/exports", help="output folder")
     ap.add_argument("--cache", default="landmark_cache", help="landmark cache folder")
-    ap.add_argument("--epochs", type=int, default=150)
+    ap.add_argument("--epochs", type=int, default=100)
+    ap.add_argument("--units", type=int, default=64,
+                    help="size of the LSTM layers; try 128-256 with many phrases")
+    ap.add_argument("--mirror-augment", action="store_true",
+                    help="also train on left/right mirrored copies of every clip")
+    ap.add_argument("--patience", type=int, default=15,
+                    help="epochs without improvement before early stopping")
     ap.add_argument("--preview", action="store_true",
                     help="show detected landmarks on each clip, then exit (no training)")
     args = ap.parse_args()
@@ -278,7 +307,8 @@ def main():
         return
     print(f"\nDataset: {X.shape[0]} sequences, shape {X.shape[1:]}, "
           f"{len(labels)} classes\n")
-    train_and_export(X, y, labels, durations, args.out, args.epochs)
+    train_and_export(X, y, labels, durations, args.out, args.epochs,
+                     args.units, args.patience, args.mirror_augment)
 
 
 if __name__ == "__main__":
