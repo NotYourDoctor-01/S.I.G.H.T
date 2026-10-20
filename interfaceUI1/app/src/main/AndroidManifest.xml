@@ -38,17 +38,17 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
 
-<<<<<<< HEAD
         <!-- Opened by folderButton: Video Subtitle & Annotation screen -->
         <activity
             android:name=".VideoAnnotationActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
-=======
+
+        <!-- File list interface screen -->
         <activity
             android:name=".FileInterfaceActivity"
-            android:exported="false" />
->>>>>>> b20468e342f591f01f778b192663c1b1fa2041a0
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
     </application>
 
 </manifest>
