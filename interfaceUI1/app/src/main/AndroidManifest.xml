@@ -37,6 +37,12 @@
             android:name=".TextToFslActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+
+        <!-- Opened by folderButton: Video Subtitle & Annotation screen -->
+        <activity
+            android:name=".VideoAnnotationActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
     </application>
 
 </manifest>
