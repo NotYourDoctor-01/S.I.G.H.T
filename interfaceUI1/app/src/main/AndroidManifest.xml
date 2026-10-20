@@ -37,6 +37,10 @@
             android:name=".TextToFslActivity"
             android:exported="false"
             android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize" />
+
+        <activity
+            android:name=".FileInterfaceActivity"
+            android:exported="false" />
     </application>
 
 </manifest>

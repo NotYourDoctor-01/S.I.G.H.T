@@ -13,9 +13,7 @@ import java.util.Locale
 class FileAdapter(private val files: List<File>) :
     RecyclerView.Adapter<FileAdapter.FileViewHolder>() {
 
-    class FileViewHolder(itemView: View) :
-        RecyclerView.ViewHolder(itemView) {
-
+    class FileViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
         val fileName: TextView = itemView.findViewById(R.id.fileName)
         val fileDetails: TextView = itemView.findViewById(R.id.fileDetails)
     }
@@ -30,18 +28,28 @@ class FileAdapter(private val files: List<File>) :
     override fun onBindViewHolder(holder: FileViewHolder, position: Int) {
         val file = files[position]
 
+        // Display the actual file name
         holder.fileName.text = file.name
 
+        // Read the file size
         val sizeKB = file.length() / 1024
+
+        // Read the last modified date
         val date = SimpleDateFormat(
             "MMM dd, yyyy",
             Locale.getDefault()
         ).format(Date(file.lastModified()))
 
-        holder.fileDetails.text = "$sizeKB KB • $date"
+        // Display file type, size, and date
+        val type = when (file.extension.lowercase()) {
+            "mp4" -> "Video recording"
+            "jpg", "jpeg", "png" -> "Image"
+            "txt" -> "Text file"
+            else -> "File"
+        }
+
+        holder.fileDetails.text = "$type • ${sizeKB} KB • $date"
     }
 
-    override fun getItemCount(): Int {
-        return files.size
-    }
+    override fun getItemCount(): Int = files.size
 }

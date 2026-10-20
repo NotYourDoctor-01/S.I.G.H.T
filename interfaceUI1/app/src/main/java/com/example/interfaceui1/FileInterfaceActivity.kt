@@ -1,6 +1,6 @@
 package com.example.interfaceui1
 
-import android.content.Intent
+
 import android.os.Bundle
 import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
@@ -14,11 +14,10 @@ class FileInterfaceActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.file_interface)
 
+
         val backButton = findViewById<ImageButton>(R.id.imageButton6)
 
         backButton.setOnClickListener {
-            val intent = Intent(this, MainActivity::class.java)
-            startActivity(intent)
             finish()
         }
 
@@ -27,6 +26,7 @@ class FileInterfaceActivity : AppCompatActivity() {
         if (!folder.exists()) {
             folder.mkdirs()
         }
+
 
         // Get the files stored in the folder
         val files = folder.listFiles()
