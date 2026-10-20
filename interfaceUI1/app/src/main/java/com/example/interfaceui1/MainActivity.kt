@@ -16,6 +16,18 @@ class  MainActivity : AppCompatActivity() {
     private lateinit var signEngine: SignEngine
     private var muted = false
 
+    private val pickVideoLauncher = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.GetContent()
+    ) { uri: android.net.Uri? ->
+        uri?.let {
+            val intent = Intent(this, VideoAnnotationActivity::class.java).apply {
+                data = it
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            startActivity(intent)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -58,6 +70,11 @@ class  MainActivity : AppCompatActivity() {
         // Text button: opens the Text to FSL screen (it has its own Back button)
         findViewById<ImageButton>(R.id.txtButton).setOnClickListener {
             startActivity(Intent(this, TextToFslActivity::class.java))
+        }
+
+        // Folder button: Pick recorded video for automatic sign annotation & subtitles
+        findViewById<ImageButton>(R.id.folderButton)?.setOnClickListener {
+            pickVideoLauncher.launch("video/*")
         }
     }
 

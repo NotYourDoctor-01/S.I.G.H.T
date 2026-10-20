@@ -1,6 +1,5 @@
 package com.example.interfaceui1
 
-import android.content.Context
 import android.media.MediaMetadataRetriever
 import android.media.MediaPlayer
 import android.net.Uri
