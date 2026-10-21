@@ -119,20 +119,37 @@ class SignEngine(
     var onLightModeChanged: ((LightMode) -> Unit)? = null
 
     fun setLightMode(mode: LightMode) {
-        if (mode != LightMode.OFF && !isFrontCamera && camera?.cameraInfo?.hasFlashUnit() != true) {
-            activity.runOnUiThread { onError("This camera has no flashlight") }
+        if (mode != LightMode.OFF && !isFrontCamera &&
+            camera?.cameraInfo?.hasFlashUnit() != true
+        ) {
+            activity.runOnUiThread {
+                onError("This camera has no flashlight")
+            }
             return
         }
+
         if (mode == LightMode.AUTO && lightSensor == null) {
-            activity.runOnUiThread { onError("This phone has no light sensor") }
+            activity.runOnUiThread {
+                onError("This phone has no light sensor")
+            }
             return
         }
+
         lightMode = mode
         lightSensorManager.unregisterListener(luxListener)
+
+        // AUTO starts with the light OFF.
         applyLight(mode == LightMode.ON)
-        if (mode == LightMode.AUTO) {
-            lightSensorManager.registerListener(luxListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
+
+        // AUTO checks ambient light only while recording.
+        if (mode == LightMode.AUTO && isRecording) {
+            lightSensorManager.registerListener(
+                luxListener,
+                lightSensor,
+                SensorManager.SENSOR_DELAY_NORMAL
+            )
         }
+
         onLightModeChanged?.invoke(mode)
     }
 
@@ -371,9 +388,14 @@ class SignEngine(
             currentRecording.stop()
             activeRecording = null
             isRecording = false
+
+            if (lightMode == LightMode.AUTO) {
+                lightSensorManager.unregisterListener(luxListener)
+                applyLight(false)
+            }
+
             return
         }
-
         val videoCap = videoCaptureUseCase ?: return
 
         val name = "SIGHT_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".mp4"
@@ -400,9 +422,23 @@ class SignEngine(
             .start(ContextCompat.getMainExecutor(activity)) { recordEvent ->
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
+                        isRecording = true
+
+                        if (lightMode == LightMode.AUTO) {
+                            lightSensorManager.registerListener(
+                                luxListener,
+                                lightSensor,
+                                SensorManager.SENSOR_DELAY_NORMAL
+                            )
+                        }
+
                         activity.runOnUiThread {
                             onStateChanged(true)
-                            Toast.makeText(activity, "Recording video to Pictures/S.I.G.H.T...", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(
+                                activity,
+                                "Recording video to Pictures/S.I.G.H.T...",
+                                Toast.LENGTH_SHORT
+                            ).show()
                         }
                     }
                     is VideoRecordEvent.Finalize -> {
