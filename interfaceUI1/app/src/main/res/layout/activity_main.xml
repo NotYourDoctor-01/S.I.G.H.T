@@ -228,7 +228,7 @@
 
 
     <!-- Light button, above Flip camera -->
-    <TextView
+    <ImageButton
         android:id="@+id/lightButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
@@ -237,9 +237,9 @@
         android:background="@drawable/bg_sight_button"
         android:contentDescription="Light"
         android:foreground="@drawable/fg_sight_ripple"
-        android:gravity="center"
-        android:text="💡"
-        android:textSize="20sp"
+
+        android:scaleType="fitCenter"
+        android:src="@drawable/flashlight3"
         app:layout_constraintBottom_toTopOf="@id/flipButton"
         app:layout_constraintEnd_toEndOf="@id/flipButton"
         app:layout_constraintStart_toStartOf="@id/flipButton" />
@@ -250,6 +250,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginStart="8dp"
+        android:visibility="gone"
         android:orientation="horizontal"
 
         app:layout_constraintBottom_toBottomOf="@id/lightButton"
