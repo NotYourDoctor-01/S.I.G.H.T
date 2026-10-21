@@ -10,6 +10,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.media.MediaPlayer
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
@@ -630,7 +631,37 @@ class SignEngine(
         }
     }
 
+    private var audioPlayer: MediaPlayer? = null
+
+    private fun playAssetAudio(fileName: String) {
+        if (muted) return
+        try {
+            audioPlayer?.stop()
+            audioPlayer?.release()
+
+            val afd = activity.assets.openFd(fileName)
+            audioPlayer = MediaPlayer().apply {
+                setDataSource(afd.fileDescriptor, afd.startOffset, afd.declaredLength)
+                afd.close()
+                prepare()
+                start()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error playing asset audio file: $fileName", e)
+        }
+    }
+
     private fun speakText(text: String) {
+        val lowerText = text.trim().lowercase(Locale.US)
+
+        if (lowerText == "six seven" || lowerText == "six_seven" || lowerText == "six7" || lowerText.contains("six seven")) {
+            playAssetAudio("six seven.mp3")
+            return
+        } else if (lowerText == "mama" || lowerText.contains("mama") || lowerText == "mother") {
+            playAssetAudio("mama.mp3")
+            return
+        }
+
         if (!muted && ttsReady && tts != null) {
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "SignEngineTTS")
         }
@@ -640,10 +671,21 @@ class SignEngine(
         this.muted = muted
         if (muted) {
             tts?.stop()
+            try {
+                audioPlayer?.stop()
+                audioPlayer?.release()
+                audioPlayer = null
+            } catch (ignored: Exception) {}
         }
     }
 
     fun release() {
+        try {
+            audioPlayer?.stop()
+            audioPlayer?.release()
+            audioPlayer = null
+        } catch (ignored: Exception) {}
+
         try {
             lightSensorManager.unregisterListener(luxListener)
             orientationEventListener?.disable()
