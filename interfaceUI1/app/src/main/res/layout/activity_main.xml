@@ -21,6 +21,88 @@
         app:layout_constraintVertical_bias="0.0"
         app:scaleType="fillCenter" />
 
+    <!-- Front cam fill light: soft white fade from each edge, 20% deep. Touches pass through. -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/fillGlow"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/previewView"
+        app:layout_constraintEnd_toEndOf="@id/previewView"
+        app:layout_constraintStart_toStartOf="@id/previewView"
+        app:layout_constraintTop_toTopOf="@id/previewView">
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/glowTopLine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.2" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/glowBottomLine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            app:layout_constraintGuide_percent="0.8" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/glowLeftLine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.2" />
+
+        <androidx.constraintlayout.widget.Guideline
+            android:id="@+id/glowRightLine"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            app:layout_constraintGuide_percent="0.8" />
+
+        <View
+            android:id="@+id/glowTop"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/sen_glow_v"
+            app:layout_constraintBottom_toTopOf="@id/glowTopLine"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/glowBottom"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/sen_glow_v"
+            android:scaleY="-1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/glowBottomLine" />
+
+        <View
+            android:id="@+id/glowLeft"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/sen_glow_h"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@id/glowLeftLine"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <View
+            android:id="@+id/glowRight"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:background="@drawable/sen_glow_h"
+            android:scaleX="-1"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@id/glowRightLine"
+            app:layout_constraintTop_toTopOf="parent" />
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
     <!-- Bottom control panel: black with a thin navy edge along the top. -->
     <View
         android:id="@+id/view"
@@ -143,5 +225,74 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toEndOf="@id/folderButton"
         app:srcCompat="@drawable/ic_volume_off" />
+
+
+    <!-- Light button, above Flip camera -->
+    <TextView
+        android:id="@+id/lightButton"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_marginBottom="12dp"
+        android:alpha="0.5"
+        android:background="@drawable/bg_sight_button"
+        android:contentDescription="Light"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:gravity="center"
+        android:text="💡"
+        android:textSize="20sp"
+        app:layout_constraintBottom_toTopOf="@id/flipButton"
+        app:layout_constraintEnd_toEndOf="@id/flipButton"
+        app:layout_constraintStart_toStartOf="@id/flipButton" />
+
+    <!-- Opens when the light button is tapped -->
+    <LinearLayout
+        android:id="@+id/lightMenu"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:orientation="horizontal"
+        android:visibility="gone"
+        app:layout_constraintBottom_toBottomOf="@id/lightButton"
+        app:layout_constraintStart_toEndOf="@id/lightButton"
+        app:layout_constraintTop_toTopOf="@id/lightButton">
+
+        <TextView
+            android:id="@+id/lightOff"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_sight_button"
+            android:foreground="@drawable/fg_sight_ripple"
+            android:gravity="center"
+            android:text="Off"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/lightAuto"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_sight_button"
+            android:foreground="@drawable/fg_sight_ripple"
+            android:gravity="center"
+            android:text="Auto"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/lightOn"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_sight_button"
+            android:foreground="@drawable/fg_sight_ripple"
+            android:gravity="center"
+            android:text="On"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

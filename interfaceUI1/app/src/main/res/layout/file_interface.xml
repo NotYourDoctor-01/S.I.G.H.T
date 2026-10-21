@@ -55,17 +55,17 @@
         android:padding="20dp"
         android:scaleType="centerInside"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/imageButton6"
+        app:layout_constraintEnd_toStartOf="@id/fileupload"
         app:layout_constraintStart_toStartOf="parent"
         app:srcCompat="@drawable/ic_play" />
 
     <ImageButton
-        android:id="@+id/imageButton6"
+        android:id="@+id/fileupload"
         android:layout_width="56dp"
         android:layout_height="56dp"
         android:layout_marginBottom="40dp"
         android:background="@drawable/bg_sight_button"
-        android:contentDescription="Back Home"
+        android:contentDescription="Import video"
         android:foreground="@drawable/fg_sight_ripple"
         android:padding="14dp"
         android:scaleType="centerInside"
@@ -81,12 +81,51 @@
         android:layout_height="0dp"
         android:layout_marginTop="20dp"
         android:layout_marginBottom="16dp"
+        android:clipToPadding="false"
         android:paddingHorizontal="16dp"
+        android:paddingBottom="72dp"
         app:layout_constraintBottom_toTopOf="@id/view"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/imageView2"
         tools:itemCount="10"
         tools:listitem="@layout/item_file" />
+
+    <!-- Floating selection controls -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toTopOf="@id/view"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/selectAllButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_sight_button"
+            android:foreground="@drawable/fg_sight_ripple"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:text="Select all"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/deleteButton"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:background="@drawable/bg_sight_button_primary"
+            android:foreground="@drawable/fg_sight_ripple"
+            android:gravity="center"
+            android:paddingHorizontal="20dp"
+            android:text="Delete"
+            android:textColor="@color/white"
+            android:textStyle="bold" />
+    </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
