@@ -24,7 +24,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:contentDescription="Back to main screen"
-            android:text="&#8592; Back" />
+            android:text="&#8592; Back"
+            android:backgroundTint="#002d66"/>
 
         <TextView
             android:layout_width="0dp"
