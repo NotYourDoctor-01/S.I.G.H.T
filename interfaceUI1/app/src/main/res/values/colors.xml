@@ -3,4 +3,8 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
+    <!-- S.I.G.H.T. palette (navy sampled from the Text button) -->
+    <color name="sight_navy">#FF002D66</color>
+    <color name="sight_ripple">#33FFFFFF</color>
+    <color name="sight_scrim">#B3000000</color>
 </resources>

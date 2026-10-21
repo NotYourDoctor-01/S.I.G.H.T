@@ -8,10 +8,7 @@
     android:background="@color/black"
     tools:context=".MainActivity">
 
-    <!-- NEW: live camera, fills the space above your bottom panel.
-         First child so your logo and panel draw on top of it. -->
-
-    <!-- FIXED: was "@android:black", which is not a valid reference -->
+    <!-- Live camera, fills the space above the bottom panel. -->
     <androidx.camera.view.PreviewView
         android:id="@+id/previewView"
         android:layout_width="0dp"
@@ -24,108 +21,127 @@
         app:layout_constraintVertical_bias="0.0"
         app:scaleType="fillCenter" />
 
+    <!-- Bottom control panel: black with a thin navy edge along the top. -->
     <View
         android:id="@+id/view"
         android:layout_width="match_parent"
         android:layout_height="223dp"
-        android:background="@android:color/black"
+        android:background="@drawable/bg_panel"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintHorizontal_bias="0.0"
         app:layout_constraintStart_toStartOf="parent" />
 
-    <!-- NEW: shows the phrase that was just spoken, at the top of your panel -->
+    <!-- Phrase that was just spoken, at the top of the panel. -->
     <TextView
         android:id="@+id/captionText"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="16dp"
+        android:layout_marginTop="20dp"
+        android:ellipsize="end"
         android:gravity="center"
-        android:paddingHorizontal="16dp"
-        android:textColor="@android:color/white"
-        android:textSize="28sp"
+        android:maxLines="3"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:textColor="@color/white"
+        android:textSize="24sp"
         android:textStyle="bold"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@id/view" />
 
+    <!-- Logo, on a dark navy-rimmed chip so it stays readable over the camera. -->
     <ImageView
         android:id="@+id/imageView"
-        android:layout_width="50dp"
-        android:layout_height="50dp"
+        android:layout_width="52dp"
+        android:layout_height="52dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
+        android:background="@drawable/bg_logo_chip"
         android:contentDescription="Logo"
+        android:padding="8dp"
         android:scaleType="centerInside"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent"
         app:srcCompat="@drawable/logo" />
 
-    <ImageButton
-        android:id="@+id/playButton"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginBottom="24dp"
-        android:background="@android:color/transparent"
-        android:contentDescription="Record"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/folderButton"
-        app:layout_constraintStart_toEndOf="@id/txtButton"
-        app:srcCompat="@drawable/recordcon" />
-
-    <ImageButton
-        android:id="@+id/folderButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginBottom="34dp"
-        android:background="@android:color/transparent"
-        android:contentDescription="Files"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toStartOf="@id/muteButton"
-        app:layout_constraintStart_toEndOf="@id/playButton"
-        app:srcCompat="@drawable/filecon" />
-
-    <ImageButton
-        android:id="@+id/muteButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginBottom="34dp"
-        android:background="@android:color/transparent"
-        android:contentDescription="Mute"
-        android:scaleType="fitCenter"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toEndOf="@id/folderButton"
-        app:srcCompat="@drawable/mute" />
+    <!-- Button row. Every button is a navy circle with a white glyph, like the Text button. -->
 
     <ImageButton
         android:id="@+id/flipButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginBottom="34dp"
-        android:background="@android:color/transparent"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/bg_sight_button"
         android:contentDescription="Flip camera"
-        android:scaleType="fitCenter"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:padding="14dp"
+        android:scaleType="centerInside"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/txtButton"
         app:layout_constraintHorizontal_chainStyle="spread"
         app:layout_constraintStart_toStartOf="parent"
-        app:srcCompat="@drawable/flipcon" />
+        app:srcCompat="@drawable/ic_flip_camera" />
 
     <ImageButton
         android:id="@+id/txtButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginBottom="34dp"
-        android:background="@android:color/transparent"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/bg_sight_button"
         android:contentDescription="Text"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:padding="11dp"
         android:scaleType="fitCenter"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toStartOf="@id/playButton"
         app:layout_constraintStart_toEndOf="@id/flipButton"
-        app:srcCompat="@drawable/txtcon" />
+        app:srcCompat="@drawable/ic_txt" />
 
+    <!-- Main action: slightly larger, with a white ring. -->
+    <ImageButton
+        android:id="@+id/playButton"
+        android:layout_width="72dp"
+        android:layout_height="72dp"
+        android:layout_marginBottom="24dp"
+        android:background="@drawable/bg_sight_button_primary"
+        android:contentDescription="Record"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:padding="20dp"
+        android:scaleType="centerInside"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/folderButton"
+        app:layout_constraintStart_toEndOf="@id/txtButton"
+        app:srcCompat="@drawable/ic_play" />
+
+    <ImageButton
+        android:id="@+id/folderButton"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/bg_sight_button"
+        android:contentDescription="Files"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:padding="14dp"
+        android:scaleType="centerInside"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/muteButton"
+        app:layout_constraintStart_toEndOf="@id/playButton"
+        app:srcCompat="@drawable/ic_folder" />
+
+    <ImageButton
+        android:id="@+id/muteButton"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:layout_marginBottom="32dp"
+        android:background="@drawable/bg_sight_button"
+        android:contentDescription="Mute"
+        android:foreground="@drawable/fg_sight_ripple"
+        android:padding="14dp"
+        android:scaleType="centerInside"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toEndOf="@id/folderButton"
+        app:srcCompat="@drawable/ic_volume_off" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
