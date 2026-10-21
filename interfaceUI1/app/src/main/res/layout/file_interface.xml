@@ -106,24 +106,23 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toBottomOf="@id/imageView2"
-        tools:itemCount="3"
+        tools:itemCount="7"
         tools:listitem="@layout/item_file" />
 
     <!-- Floating selection controls -->
 
-    <TextView
+    <CheckBox
         android:id="@+id/selectAllButton"
         android:layout_width="wrap_content"
-        android:layout_height="48dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:layout_marginEnd="20dp"
         android:background="@drawable/bg_sight_button"
-        android:foreground="@drawable/fg_sight_ripple"
-        android:gravity="center"
-        android:paddingHorizontal="20dp"
-        android:text="Select all"
+        android:buttonTint="@color/white"
+        android:checked="false"
         android:textColor="@color/white"
         android:textStyle="bold"
-        tools:layout_editor_absoluteX="296dp"
-        tools:layout_editor_absoluteY="20dp"
-        />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>
