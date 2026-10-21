@@ -54,9 +54,13 @@ class  MainActivity : AppCompatActivity() {
         val fileButton = findViewById<ImageButton>(R.id.folderButton)
 
 
-        //folder button
+        // Folder button: Tap to view saved recordings, Long-press to import external video
         fileButton.setOnClickListener {
             startActivity(Intent(this, FileInterfaceActivity::class.java))
+        }
+        fileButton.setOnLongClickListener {
+            pickVideoLauncher.launch("video/*")
+            true
         }
 
         // Camera + sign recognition + speech
@@ -88,9 +92,12 @@ class  MainActivity : AppCompatActivity() {
             startActivity(Intent(this, TextToFslActivity::class.java))
         }
 
-        // Folder button: Pick recorded video for automatic sign annotation & subtitles
-        findViewById<ImageButton>(R.id.folderButton)?.setOnClickListener {
-            pickVideoLauncher.launch("video/*")
+        // Play/Record button: Records video with real-time sign recognition and saves to Pictures/S.I.G.H.T
+        val playButton = findViewById<ImageButton>(R.id.playButton)
+        playButton?.setOnClickListener {
+            signEngine.toggleRecording { isRecording ->
+                playButton.alpha = if (isRecording) 0.5f else 1.0f
+            }
         }
     }
 

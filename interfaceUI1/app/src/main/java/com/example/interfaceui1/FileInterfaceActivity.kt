@@ -16,27 +16,32 @@ class FileInterfaceActivity : AppCompatActivity() {
 
 
         val backButton = findViewById<ImageButton>(R.id.imageButton6)
+        val cameraButton = findViewById<ImageButton>(R.id.imageButton7)
 
-        backButton.setOnClickListener {
-            finish()
+        backButton?.setOnClickListener { finish() }
+        cameraButton?.setOnClickListener { finish() }
+
+        val myFilesFolder = File(filesDir, "MyFiles")
+        if (!myFilesFolder.exists()) {
+            myFilesFolder.mkdirs()
         }
 
-        // Create the folder if it doesn't exist
-        val folder = File(filesDir, "MyFiles")
-        if (!folder.exists()) {
-            folder.mkdirs()
+        val sightPicturesFolder = File(
+            android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES),
+            "S.I.G.H.T"
+        )
+        if (!sightPicturesFolder.exists()) {
+            sightPicturesFolder.mkdirs()
         }
 
-
-        // Get the files stored in the folder
-        val files = folder.listFiles()
-            ?.filter { it.isFile }
-            ?.sortedByDescending { it.lastModified() }
-            ?: emptyList()
+        // Get the files stored in both folders
+        val files = (myFilesFolder.listFiles()?.filter { it.isFile } ?: emptyList()) +
+                    (sightPicturesFolder.listFiles()?.filter { it.isFile } ?: emptyList())
+        val sortedFiles = files.sortedByDescending { it.lastModified() }
 
         // Display the files in the RecyclerView
         val fileList = findViewById<RecyclerView>(R.id.fileList)
         fileList.layoutManager = LinearLayoutManager(this)
-        fileList.adapter = FileAdapter(files)
+        fileList.adapter = FileAdapter(sortedFiles)
     }
 }

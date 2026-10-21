@@ -1,53 +1,57 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:orientation="horizontal"
+    android:layout_marginBottom="12dp"
+    android:background="@drawable/bg_item_file"
     android:gravity="center_vertical"
-    android:padding="12dp"
-    android:layout_marginBottom="8dp"
-    android:background="@color/white">
+    android:orientation="horizontal"
+    android:padding="14dp">
 
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
-        android:src="@drawable/baseline_image_24"
-        android:scaleType="fitCenter"
-        android:contentDescription="File icon" />
+        android:layout_width="44dp"
+        android:layout_height="44dp"
+        android:background="@drawable/bg_logo_chip"
+        android:contentDescription="File icon"
+        android:padding="10dp"
+        android:scaleType="centerInside"
+        app:srcCompat="@drawable/ic_folder" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
         android:layout_weight="1"
-        android:orientation="vertical"
-        android:layout_marginStart="12dp">
+        android:orientation="vertical">
 
         <TextView
             android:id="@+id/fileName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="recording_01.mp4"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:textColor="#222222"
+            android:ellipsize="end"
             android:maxLines="1"
-            android:ellipsize="end" />
+            android:text="recording_01.mp4"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/fileDetails"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
             android:text="Video recording"
-            android:textSize="12sp"
-            android:textColor="#777777"
-            android:layout_marginTop="4dp" />
+            android:textColor="#9CA3AF"
+            android:textSize="13sp" />
 
     </LinearLayout>
 
     <ImageView
-        android:layout_width="24dp"
-        android:layout_height="24dp"
-        android:src="@drawable/recordcon"
-        android:contentDescription="Open file" />
+        android:layout_width="28dp"
+        android:layout_height="28dp"
+        android:contentDescription="Open file"
+        android:padding="4dp"
+        app:srcCompat="@drawable/ic_play" />
 
 </LinearLayout>

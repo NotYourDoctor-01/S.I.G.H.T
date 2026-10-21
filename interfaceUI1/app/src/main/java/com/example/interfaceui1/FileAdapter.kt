@@ -49,6 +49,16 @@ class FileAdapter(private val files: List<File>) :
         }
 
         holder.fileDetails.text = "$type • ${sizeKB} KB • $date"
+
+        holder.itemView.setOnClickListener {
+            if (file.extension.lowercase() in listOf("mp4", "mov", "avi", "mkv", "webm")) {
+                val context = holder.itemView.context
+                val intent = android.content.Intent(context, VideoAnnotationActivity::class.java).apply {
+                    data = android.net.Uri.fromFile(file)
+                }
+                context.startActivity(intent)
+            }
+        }
     }
 
     override fun getItemCount(): Int = files.size

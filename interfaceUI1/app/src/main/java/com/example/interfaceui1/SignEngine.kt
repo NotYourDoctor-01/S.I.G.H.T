@@ -1,20 +1,31 @@
 package com.example.interfaceui1
 
 import android.Manifest
+import android.content.ContentValues
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.os.SystemClock
+import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
 import android.util.Log
 import android.view.OrientationEventListener
 import android.view.Surface
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.video.FallbackStrategy
+import androidx.camera.video.MediaStoreOutputOptions
+import androidx.camera.video.Quality
+import androidx.camera.video.QualitySelector
+import androidx.camera.video.Recorder
+import androidx.camera.video.Recording
+import androidx.camera.video.VideoCapture
+import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -29,7 +40,9 @@ import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
+import java.text.SimpleDateFormat
 import java.util.ArrayDeque
+import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -66,6 +79,9 @@ class SignEngine(
     private var orientationEventListener: OrientationEventListener? = null
     private var previewUseCase: Preview? = null
     private var imageAnalysisUseCase: ImageAnalysis? = null
+    private var videoCaptureUseCase: VideoCapture<Recorder>? = null
+    private var activeRecording: Recording? = null
+    private var isRecording = false
 
     private var clipSeconds = 4.07f
     private var numFrames = 30
@@ -260,18 +276,79 @@ class SignEngine(
                     else -> throw IllegalStateException("No available camera found on this device")
                 }
 
+                val recorder = Recorder.Builder()
+                    .setQualitySelector(QualitySelector.from(Quality.HIGHEST, FallbackStrategy.higherQualityOrLowerThan(Quality.SD)))
+                    .build()
+                val videoCap = VideoCapture.withOutput(recorder)
+                videoCaptureUseCase = videoCap
+
                 provider.unbindAll()
                 provider.bindToLifecycle(
                     activity,
                     cameraSelector,
                     preview,
-                    imageAnalysis
+                    imageAnalysis,
+                    videoCap
                 )
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start camera", e)
                 activity.runOnUiThread { onError("Failed to start camera: ${e.message ?: "Unknown error"}") }
             }
         }, ContextCompat.getMainExecutor(activity))
+    }
+
+    fun toggleRecording(onStateChanged: (Boolean) -> Unit) {
+        val currentRecording = activeRecording
+        if (currentRecording != null) {
+            currentRecording.stop()
+            activeRecording = null
+            isRecording = false
+            return
+        }
+
+        val videoCap = videoCaptureUseCase ?: return
+
+        val name = "SIGHT_" + SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date()) + ".mp4"
+        val contentValues = ContentValues().apply {
+            put(MediaStore.Video.Media.DISPLAY_NAME, name)
+            put(MediaStore.Video.Media.MIME_TYPE, "video/mp4")
+            put(MediaStore.Video.Media.RELATIVE_PATH, "Pictures/S.I.G.H.T")
+        }
+
+        val mediaStoreOutputOptions = MediaStoreOutputOptions
+            .Builder(activity.contentResolver, MediaStore.Video.Media.EXTERNAL_CONTENT_URI)
+            .setContentValues(contentValues)
+            .build()
+
+        isRecording = true
+
+        activeRecording = videoCap.output
+            .prepareRecording(activity, mediaStoreOutputOptions)
+            .apply {
+                if (ContextCompat.checkSelfPermission(activity, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    withAudioEnabled()
+                }
+            }
+            .start(ContextCompat.getMainExecutor(activity)) { recordEvent ->
+                when (recordEvent) {
+                    is VideoRecordEvent.Start -> {
+                        activity.runOnUiThread {
+                            onStateChanged(true)
+                            Toast.makeText(activity, "Recording video to Pictures/S.I.G.H.T...", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                    is VideoRecordEvent.Finalize -> {
+                        activity.runOnUiThread {
+                            onStateChanged(false)
+                            if (!recordEvent.hasError()) {
+                                Toast.makeText(activity, "Saved video to Pictures/S.I.G.H.T!", Toast.LENGTH_LONG).show()
+                            } else {
+                                Log.e(TAG, "Video recording error: ${recordEvent.error}")
+                            }
+                        }
+                    }
+                }
+            }
     }
 
     private fun setupOrientationListener() {
