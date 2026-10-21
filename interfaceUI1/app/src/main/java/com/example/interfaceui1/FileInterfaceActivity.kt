@@ -1,11 +1,14 @@
 package com.example.interfaceui1
 
+import android.net.Uri
 import android.os.Bundle
+import android.provider.OpenableColumns
 import android.view.View
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -18,15 +21,45 @@ class FileInterfaceActivity : AppCompatActivity() {
     private lateinit var deleteButton: TextView
     private lateinit var selectAllButton: TextView
 
+    private val pickVideo = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { importVideo(it) }
+    }
+
+    private fun importVideo(uri: Uri) {
+        Thread {
+            var dest: File? = null
+            try {
+                val name = contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)
+                    ?.use { if (it.moveToFirst()) it.getString(0) else null }
+                    ?: "import_${System.currentTimeMillis()}.mp4"
+                val folder = File(filesDir, "MyFiles")
+                // File(name).name strips any path pieces the picker might send
+                var target = File(folder, File(name).name)
+                if (target.exists()) target = File(folder, "${System.currentTimeMillis()}_${target.name}")
+                dest = target
+                contentResolver.openInputStream(uri)!!.use { input ->
+                    target.outputStream().use { input.copyTo(it) }
+                }
+                runOnUiThread {
+                    adapter.addFile(target)
+                    Toast.makeText(this, "Video imported", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: Exception) {
+                dest?.delete() // don't leave a half-copied file behind
+                runOnUiThread { Toast.makeText(this, "Import failed", Toast.LENGTH_LONG).show() }
+            }
+        }.start()
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.file_interface)
 
 
-        val backButton = findViewById<ImageButton>(R.id.imageButton6)
+        val backButton = findViewById<ImageButton>(R.id.fileupload)
         val cameraButton = findViewById<ImageButton>(R.id.imageButton7)
 
-        backButton?.setOnClickListener { finish() }
+        backButton?.setOnClickListener { pickVideo.launch("video/*") }
         cameraButton?.setOnClickListener { finish() }
 
         val myFilesFolder = File(filesDir, "MyFiles")

@@ -34,6 +34,11 @@ class FileAdapter(
         onSelectionChanged()
     }
 
+    fun addFile(file: File) {
+        files.add(0, file)
+        notifyItemInserted(0)
+    }
+
     /** Deletes the selected files, returns how many failed to delete. */
     fun deleteSelected(): Int {
         var failed = 0
