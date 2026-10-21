@@ -22,7 +22,7 @@ import java.io.File
 class FileInterfaceActivity : AppCompatActivity() {
 
     private lateinit var adapter: FileAdapter
-    private lateinit var deleteButton: TextView
+    private lateinit var deleteButton: ImageButton
     private lateinit var selectAllButton: TextView
 
     private val pickVideo = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
@@ -135,7 +135,8 @@ class FileInterfaceActivity : AppCompatActivity() {
         val mode = adapter.selectionMode
         selectAllButton.visibility = if (mode) View.VISIBLE else View.GONE
         selectAllButton.text = if (adapter.allSelected()) "Deselect all" else "Select all"
-        deleteButton.text = if (mode && adapter.selected.isNotEmpty()) "Delete (${adapter.selected.size})" else "Delete"
+
+        deleteButton.alpha = if (mode && adapter.selected.isNotEmpty()) 1f else 0.6f
     }
 
     private fun confirmDelete() {
