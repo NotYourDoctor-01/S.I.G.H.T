@@ -48,10 +48,20 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/playIcon"
         android:layout_width="28dp"
         android:layout_height="28dp"
         android:contentDescription="Open file"
         android:padding="4dp"
         app:srcCompat="@drawable/ic_play" />
+
+    <CheckBox
+        android:id="@+id/fileCheck"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:buttonTint="@color/white"
+        android:clickable="false"
+        android:focusable="false"
+        android:visibility="gone" />
 
 </LinearLayout>
