@@ -2,9 +2,14 @@ package com.example.interfaceui1
 
 import android.Manifest
 import android.content.ContentValues
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.SystemClock
 import android.provider.MediaStore
 import android.speech.tts.TextToSpeech
@@ -13,6 +18,7 @@ import android.view.OrientationEventListener
 import android.view.Surface
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -100,12 +106,72 @@ class SignEngine(
 
     var mirrorImage: Boolean = false
 
+    enum class LightMode { OFF, AUTO, ON }
+
+    private var camera: Camera? = null
+    @Volatile private var lightMode = LightMode.OFF
+    @Volatile private var lightLit = false
+
+    /** Front cam only: true = show the screen fill light. */
+    var onFillLight: ((Boolean) -> Unit)? = null
+    /** Fires whenever the light mode changes (including resets), so the UI can follow. */
+    var onLightModeChanged: ((LightMode) -> Unit)? = null
+
+    fun setLightMode(mode: LightMode) {
+        if (mode != LightMode.OFF && !isFrontCamera && camera?.cameraInfo?.hasFlashUnit() != true) {
+            activity.runOnUiThread { onError("This camera has no flashlight") }
+            return
+        }
+        if (mode == LightMode.AUTO && lightSensor == null) {
+            activity.runOnUiThread { onError("This phone has no light sensor") }
+            return
+        }
+        lightMode = mode
+        lightSensorManager.unregisterListener(luxListener)
+        applyLight(mode == LightMode.ON)
+        if (mode == LightMode.AUTO) {
+            lightSensorManager.registerListener(luxListener, lightSensor, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        onLightModeChanged?.invoke(mode)
+    }
+
+    private fun applyLight(lit: Boolean) {
+        lightLit = lit
+        if (isFrontCamera) {
+            activity.runOnUiThread { onFillLight?.invoke(lit) }
+        } else {
+            camera?.cameraControl?.enableTorch(lit)
+        }
+    }
+
+    // Auto mode reads the phone's ambient light sensor (the camera frame can't be used:
+    // auto-exposure brightens dark scenes, so the image never looks dark).
+    private val lightSensorManager by lazy { activity.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+    private val lightSensor: Sensor? by lazy { lightSensorManager.getDefaultSensor(Sensor.TYPE_LIGHT) }
+
+    private val luxListener = object : SensorEventListener {
+        override fun onSensorChanged(event: SensorEvent) {
+            val lux = event.values[0]
+            Log.d(TAG, "Ambient light: $lux lux")
+            // Gap between ON and OFF thresholds stops flickering. Front is higher because
+            // the screen glow itself adds light to the sensor.
+            val offLux = if (isFrontCamera) AUTO_OFF_LUX_FRONT else AUTO_OFF_LUX_BACK
+            if (!lightLit && lux < AUTO_ON_LUX) applyLight(true)
+            else if (lightLit && lux > offLux) applyLight(false)
+        }
+
+        override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+    }
+
     companion object {
         private const val TAG = "SignEngine"
         private const val CAMERA_PERMISSION_REQUEST_CODE = 1001
         private const val CONFIDENCE_THRESHOLD = 0.50f
         private const val VOTE_WINDOW = 8
         private const val REQUIRED_VOTES = 3
+        private const val AUTO_ON_LUX = 15f
+        private const val AUTO_OFF_LUX_BACK = 60f
+        private const val AUTO_OFF_LUX_FRONT = 150f
     }
 
     init {
@@ -115,6 +181,7 @@ class SignEngine(
     }
 
     fun toggleCamera() {
+        setLightMode(LightMode.OFF) // light resets when flipping
         isFrontCamera = !isFrontCamera
         startCamera()
     }
@@ -283,7 +350,7 @@ class SignEngine(
                 videoCaptureUseCase = videoCap
 
                 provider.unbindAll()
-                provider.bindToLifecycle(
+                camera = provider.bindToLifecycle(
                     activity,
                     cameraSelector,
                     preview,
@@ -578,6 +645,7 @@ class SignEngine(
 
     fun release() {
         try {
+            lightSensorManager.unregisterListener(luxListener)
             orientationEventListener?.disable()
             orientationEventListener = null
 

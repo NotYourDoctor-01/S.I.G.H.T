@@ -2,6 +2,8 @@ package com.example.interfaceui1
 
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.view.WindowManager
 import android.widget.ImageButton
 import android.widget.TextView
 import android.widget.Toast
@@ -71,6 +73,44 @@ class  MainActivity : AppCompatActivity() {
             onError = { msg -> Toast.makeText(this, msg, Toast.LENGTH_LONG).show() }
         )
 
+        // Light: tap the bulb to open Off / Auto / On. Back cam = flashlight, front cam = screen fill light.
+        val lightButton = findViewById<TextView>(R.id.lightButton)
+        val lightMenu = findViewById<View>(R.id.lightMenu)
+        val fillGlow = findViewById<View>(R.id.fillGlow)
+        val lightChoices = mapOf(
+            findViewById<TextView>(R.id.lightOff) to SignEngine.LightMode.OFF,
+            findViewById<TextView>(R.id.lightAuto) to SignEngine.LightMode.AUTO,
+            findViewById<TextView>(R.id.lightOn) to SignEngine.LightMode.ON
+        )
+
+        fun showLightMode(mode: SignEngine.LightMode) {
+            lightChoices.forEach { (view, m) ->
+                view.setBackgroundResource(
+                    if (m == mode) R.drawable.bg_sight_button_primary else R.drawable.bg_sight_button
+                )
+            }
+            lightButton.alpha = if (mode == SignEngine.LightMode.OFF) 0.5f else 1f
+        }
+        showLightMode(SignEngine.LightMode.OFF)
+
+        signEngine.onLightModeChanged = { showLightMode(it) }
+        signEngine.onFillLight = { lit ->
+            fillGlow.visibility = if (lit) View.VISIBLE else View.GONE
+            window.attributes = window.attributes.apply {
+                screenBrightness = if (lit) 1f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
+            }
+        }
+
+        lightButton.setOnClickListener {
+            lightMenu.visibility = if (lightMenu.visibility == View.VISIBLE) View.GONE else View.VISIBLE
+        }
+        lightChoices.forEach { (view, mode) ->
+            view.setOnClickListener {
+                signEngine.setLightMode(mode)
+                lightMenu.visibility = View.GONE
+            }
+        }
+
         previewView.post {
             signEngine.start()
         }
@@ -108,6 +148,11 @@ class  MainActivity : AppCompatActivity() {
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         signEngine.onRequestPermissionsResult(requestCode, permissions, grantResults)
+    }
+
+    override fun onStop() {
+        signEngine.setLightMode(SignEngine.LightMode.OFF)
+        super.onStop()
     }
 
     override fun onDestroy() {

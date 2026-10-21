@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Fades white downward from the top edge. The bottom edge reuses this with scaleY=-1. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <gradient
+        android:angle="270"
+        android:centerColor="#40FFFFFF"
+        android:endColor="#00FFFFFF"
+        android:startColor="#D9FFFFFF" />
+</shape>
