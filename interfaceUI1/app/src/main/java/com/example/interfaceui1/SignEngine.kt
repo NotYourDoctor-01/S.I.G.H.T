@@ -141,8 +141,8 @@ class SignEngine(
         // AUTO starts with the light OFF.
         applyLight(mode == LightMode.ON)
 
-        // AUTO checks ambient light only while recording.
-        if (mode == LightMode.AUTO && isRecording) {
+        // AUTO watches the ambient light all the time, recording or not.
+        if (mode == LightMode.AUTO) {
             lightSensorManager.registerListener(
                 luxListener,
                 lightSensor,
@@ -388,12 +388,6 @@ class SignEngine(
             currentRecording.stop()
             activeRecording = null
             isRecording = false
-
-            if (lightMode == LightMode.AUTO) {
-                lightSensorManager.unregisterListener(luxListener)
-                applyLight(false)
-            }
-
             return
         }
         val videoCap = videoCaptureUseCase ?: return
@@ -423,14 +417,6 @@ class SignEngine(
                 when (recordEvent) {
                     is VideoRecordEvent.Start -> {
                         isRecording = true
-
-                        if (lightMode == LightMode.AUTO) {
-                            lightSensorManager.registerListener(
-                                luxListener,
-                                lightSensor,
-                                SensorManager.SENSOR_DELAY_NORMAL
-                            )
-                        }
 
                         activity.runOnUiThread {
                             onStateChanged(true)
