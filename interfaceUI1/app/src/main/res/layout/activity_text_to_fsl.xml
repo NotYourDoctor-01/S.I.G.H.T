@@ -43,7 +43,7 @@
                 android:layout_weight="1"
                 android:gravity="center"
                 android:paddingEnd="64dp"
-                android:text="Text"
+                android:text="Text to FSL"
                 android:textColor="@android:color/white"
                 android:textSize="18sp"
                 android:textStyle="bold"

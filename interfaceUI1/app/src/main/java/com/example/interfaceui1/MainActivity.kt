@@ -74,7 +74,7 @@ class  MainActivity : AppCompatActivity() {
         )
 
         // Light: tap the bulb to open Off / Auto / On. Back cam = flashlight, front cam = screen fill light.
-        val lightButton = findViewById<TextView>(R.id.lightButton)
+        val lightButton = findViewById<ImageButton>(R.id.lightButton)
         val lightMenu = findViewById<View>(R.id.lightMenu)
         val fillGlow = findViewById<View>(R.id.fillGlow)
         val lightChoices = mapOf(

@@ -22,8 +22,10 @@ import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarker
 import com.google.mediapipe.tasks.vision.handlandmarker.HandLandmarkerResult
+import org.json.JSONArray
 import org.json.JSONObject
 import org.tensorflow.lite.Interpreter
+import java.io.File
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
@@ -52,6 +54,7 @@ class VideoAnnotationActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
 
     private var videoUri: Uri? = null
+    @Volatile private var destroyed = false
     private val subtitleSegments = ArrayList<SubtitleSegment>()
 
     private val handler = Handler(Looper.getMainLooper())
@@ -113,10 +116,19 @@ class VideoAnnotationActivity : AppCompatActivity() {
             return
         }
 
+        // Already analyzed before? Load the saved subtitles and skip the analysis.
+        val cache = cacheFileFor(videoUri!!)
+        if (cache != null && loadCache(cache)) {
+            progressBar.visibility = View.GONE
+            statusText.text = "Loaded saved annotations. ${subtitleSegments.size} subtitle segment(s)."
+            startVideoPlayback(videoUri!!)
+            return
+        }
+
         loadModelAndLabels()
         setupHandLandmarker()
 
-        analyzeVideoAndPlay(videoUri!!)
+        analyzeVideoAndPlay(videoUri!!, cache)
     }
 
     private fun loadModelAndLabels() {
@@ -168,10 +180,11 @@ class VideoAnnotationActivity : AppCompatActivity() {
         }
     }
 
-    private fun analyzeVideoAndPlay(uri: Uri) {
+    private fun analyzeVideoAndPlay(uri: Uri, cache: File?) {
         val executor = Executors.newSingleThreadExecutor()
         executor.execute {
             val retriever = MediaMetadataRetriever()
+            var complete = false // only a full, successful pass gets saved
             try {
                 retriever.setDataSource(applicationContext, uri)
                 val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
@@ -189,6 +202,7 @@ class VideoAnnotationActivity : AppCompatActivity() {
                     val requiredSpan = (0.7f * videoDurationSec).coerceAtMost(0.8f * clipSeconds).coerceAtLeast(0.5f)
 
                     for (step in 0..totalSteps) {
+                        if (destroyed) return@execute // screen closed: don't save a half result
                         val currentTimeMs = step * frameIntervalMs
                         val frameUs = currentTimeMs * 1000L
 
@@ -236,11 +250,17 @@ class VideoAnnotationActivity : AppCompatActivity() {
                             progressBar.progress = progress
                         }
                     }
+                    complete = true
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error analyzing video", e)
             } finally {
                 try { retriever.release() } catch (ignored: Exception) {}
+            }
+
+            // Don't save if the model failed to load (the empty result would be wrong)
+            if (complete && cache != null && handLandmarker != null && tfliteInterpreter != null) {
+                saveCache(cache)
             }
 
             runOnUiThread {
@@ -353,6 +373,45 @@ class VideoAnnotationActivity : AppCompatActivity() {
         }
     }
 
+    // Saved results live in cacheDir. The name changes if the video changes or the app is
+    // updated (a new model would give different subtitles). Only works for file:// videos.
+    private fun cacheFileFor(uri: Uri): File? {
+        if (uri.scheme != "file") return null
+        val video = File(uri.path ?: return null)
+        val appStamp = packageManager.getPackageInfo(packageName, 0).lastUpdateTime
+        val folder = File(cacheDir, "annotations").apply { mkdirs() }
+        return File(folder, "${video.absolutePath.hashCode()}_${video.lastModified()}_${video.length()}_$appStamp.json")
+    }
+
+    private fun loadCache(cache: File): Boolean {
+        if (!cache.exists()) return false
+        return try {
+            val arr = JSONArray(cache.readText())
+            val loaded = ArrayList<SubtitleSegment>()
+            for (i in 0 until arr.length()) {
+                val o = arr.getJSONObject(i)
+                loaded.add(SubtitleSegment(o.getLong("start"), o.getLong("end"), o.getString("text")))
+            }
+            subtitleSegments.addAll(loaded)
+            true
+        } catch (e: Exception) {
+            cache.delete() // unreadable, so analyze again
+            false
+        }
+    }
+
+    private fun saveCache(cache: File) {
+        try {
+            val arr = JSONArray()
+            subtitleSegments.forEach {
+                arr.put(JSONObject().put("start", it.startTimeMs).put("end", it.endTimeMs).put("text", it.text))
+            }
+            cache.writeText(arr.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error saving annotations", e)
+        }
+    }
+
     private fun startVideoPlayback(uri: Uri) {
         videoView.setVideoURI(uri)
         videoView.setOnPreparedListener { mp: MediaPlayer ->
@@ -363,6 +422,7 @@ class VideoAnnotationActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        destroyed = true
         handler.removeCallbacks(updateSubtitleRunnable)
         try {
             handLandmarker?.close()
